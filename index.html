@@ -68,10 +68,7 @@
     <script src="https://code.jquery.com/jquery-3.2.1.js" type="text/javascript"></script>
     <script>
         Array.prototype.contains = function(elem) {
-            for (var i in this) {
-                if (this[i] == elem) return true;
-            }
-            return false;
+            return this.includes(elem);
         }
 
         var jogador = [];
@@ -94,15 +91,24 @@
             ["3", "5", "7"]
         ];
 
-        var teste = ["1", "2", "3"];
-
-        var v1, v2, v3, v4, v5, v6, v7, v8, v9;
         var livres = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
-        var db = openDatabase('jogo_velha_ia_db', '1.0', 'Test DB', 2 * 1024 * 1024);
+        // Função para salvar jogadas no localStorage
+        function saveMove(winner, loser) {
+            let jogadas = JSON.parse(localStorage.getItem("jogadas")) || [];
+            jogadas.push({ vencedor: winner, perdedor: loser });
+            localStorage.setItem("jogadas", JSON.stringify(jogadas));
+        }
 
-        createDatabase();
-        jogadaMaquina();
+        // Função para deletar dados do localStorage
+        function deleteDatabase() {
+            localStorage.removeItem("jogadas");
+            location.reload();
+        }
+
+        function comecarNovamente() {
+            location.reload();
+        }
 
         function jogadaMaquina() {
             verificaSeJogadorEstaPelaBoa();
@@ -110,20 +116,18 @@
         }
 
         function verificaSeJogadorEstaPelaBoa() {
-            for (i = 0; i < possiveisVitorias.length; i++) {
+            for (let i = 0; i < possiveisVitorias.length; i++) {
                 var a = possiveisVitorias[i];
-
                 var count = 0;
 
-                for (y = 0; y < jogador.length; y++) {
+                for (let y = 0; y < jogador.length; y++) {
                     if (a.contains(jogador[y])) {
                         count += 1;
                     }
                 }
 
                 if (count == 2) {
-
-                    for (j = 0; j < a.length; j++) {
+                    for (let j = 0; j < a.length; j++) {
                         var x = a[j];
                         if (!jogador.contains("" + x + "") && !maquina.contains("" + x + "")) {
                             boa = "" + x + "";
@@ -140,101 +144,41 @@
                 var index = livres.indexOf("" + id + "");
                 livres.splice(index, 1);
                 $("#" + id).css('background-image', 'url(o.png)');
-                verificaSeGanhou()
+                verificaSeGanhou();
                 if (!acabou) {
                     jogadaMaquina();
                 }
             }
         }
 
-        function createDatabase() {
-            db.transaction(function(tx) {
-                tx.executeSql("CREATE TABLE IF NOT EXISTS JOGADAS (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, v_1, v_2, v_3, v_4, v_5, d_1, d_2, d_3, d_4)");
-            });
-        }
-
-        function deleteDatabase() {
-            db.transaction(function(tx) {
-                tx.executeSql("DROP TABLE JOGADAS");
-            });
-            location.reload();
-        }
-
-        function comecarNovamente() {
-            location.reload();
-        }
-
-        function insereJogada(vencedor, perdedor) {
-            db.transaction(function(tx) {
-                tx.executeSql("INSERT INTO JOGADAS (v_1, v_2, v_3, v_4, v_5, d_1, d_2, d_3, d_4) VALUES (?,?,?,?,?,?,?,?,?)", [vencedor[0], vencedor[1], vencedor[2], vencedor[3], vencedor[4], perdedor[0], perdedor[1], perdedor[2], perdedor[3]], null, null);
-            });
-        }
-
         function buscarMelhorOpcao(jogadas, ganhador) {
+            var val;
+            var total = jogador.length + maquina.length;
 
-            var sql = "SELECT * FROM JOGADAS WHERE ";
-
-            for (i = 0; i < jogadas.length; i++) {
-                var param = jogadas[i];
-                var campo = parseInt(i) + 1;
-                sql += "d_" + campo + " = '" + param + "' AND ";
+            if (total < 8 && usarBoa) {
+                val = boa;
+                usarBoa = false;
+            } else {
+                var rand = livres[Math.floor(Math.random() * livres.length)];
+                val = rand;
+                primeiraJogada = false;
             }
 
-            for (i = 0; i < ganhador.length; i++) {
-                var param = ganhador[i];
-                var campo = parseInt(i) + 1;
-                sql += "v_" + campo + " = '" + param + "' AND ";
-            }
-
-            sql += "1=1";
-
-            //console.log(sql);
-
-            db.transaction(function(tx) {
-                tx.executeSql(sql, [], function(tx, results) {
-                    var len = results.rows.length,
-                        i;
-
-                    var val;
-
-                    var total = parseInt(jogador.length) + parseInt(maquina.length);
-
-                    if (total < 8 && usarBoa) {
-                        val = boa;
-                        usarBoa = false;
-                    } else if (len > 0 && !primeiraJogada) {
-                        var posicao = parseInt(maquina.length) + 1
-                        var v = "v_" + posicao;
-                        val = results.rows.item(0)[v];
-                        console.log("Em modo IA");
-                    } else {
-                        var rand = livres[Math.floor(Math.random() * livres.length)];
-                        val = rand;
-                        primeiraJogada = false;
-                        console.log("Aprendendo");
-                    }
-
-                    maquina.push("" + val + "");
-                    var index = livres.indexOf("" + val + "");
-                    livres.splice(index, 1);
-                    $("#" + val).css('background-image', 'url(x.png)');
-                    verificaSePerdeu();
-
-                }, null);
-            });
+            maquina.push("" + val + "");
+            var index = livres.indexOf("" + val + "");
+            livres.splice(index, 1);
+            $("#" + val).css('background-image', 'url(x.png)');
+            verificaSePerdeu();
         }
 
         function verificaSeGanhou() {
-
-            for (i = 0; i < possiveisVitorias.length; i++) {
-
+            for (let i = 0; i < possiveisVitorias.length; i++) {
                 var venceu = true;
                 var a = possiveisVitorias[i];
                 var countPontosVitoria = 0;
 
-                for (j = 0; j < a.length; j++) {
+                for (let j = 0; j < a.length; j++) {
                     var x = a[j];
-
                     if (!(jogador.contains(x))) {
                         venceu = false;
                     } else {
@@ -243,26 +187,23 @@
                 }
 
                 if (venceu && countPontosVitoria >= 3) {
-                    for (j = 0; j < a.length; j++) {
+                    for (let j = 0; j < a.length; j++) {
                         $("#" + a[j]).css('background-color', 'green');
                     }
-                    insereJogada(jogador, maquina);
+                    saveMove(jogador, maquina);
                     acabou = true;
                 }
             }
         }
 
         function verificaSePerdeu() {
-
-            for (i = 0; i < possiveisVitorias.length; i++) {
-
+            for (let i = 0; i < possiveisVitorias.length; i++) {
                 var perdeu = true;
                 var a = possiveisVitorias[i];
                 var countPontosDerrota = 0;
 
-                for (j = 0; j < a.length; j++) {
+                for (let j = 0; j < a.length; j++) {
                     var x = a[j];
-
                     if (!(maquina.contains(x))) {
                         perdeu = false;
                     } else {
@@ -271,12 +212,11 @@
                 }
 
                 if (perdeu && countPontosDerrota >= 3) {
-                    for (j = 0; j < a.length; j++) {
+                    for (let j = 0; j < a.length; j++) {
                         $("#" + a[j]).css('background-color', 'red');
                     }
-                    insereJogada(maquina, jogador);
+                    saveMove(maquina, jogador);
                 }
-
             }
         }
     </script>
